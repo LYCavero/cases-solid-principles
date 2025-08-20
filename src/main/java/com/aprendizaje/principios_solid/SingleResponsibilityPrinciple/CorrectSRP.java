@@ -130,7 +130,9 @@ public class CorrectSRP {
     En este ejemplo se separó la responsabilidad de generar la guía y generar el reporte de la guía en servicios
     separados, cumpliendo con el mismo objetivo, que es la que generar el reporte luego de que se haya emitido una guía,
     pero la diferencia está en que si luego, la lógica de la generación del pdf cambia, no afecta a la lógica de la
-    generación de la guía que sí funciona, y de la misma manera, si la api externa modifica la manera en como se
+    generación de la guía que sí funciona, y de la misma manera, si la api externa modifica la manera en como se debe 
+    comunicar a la api, ya no habría necesitar de modificar el método de la generación de reporte que sí funciona, ya 
+    que se encuentran encapsulados en distintos métodos
 
  */
 
