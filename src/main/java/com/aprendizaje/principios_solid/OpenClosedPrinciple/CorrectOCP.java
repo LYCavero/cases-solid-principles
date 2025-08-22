@@ -55,11 +55,6 @@ public class CorrectOCP {
     }
 
     class IterGuideServiceImpl implements IterGuideService {
-        @Override
-        public void generateReportPdf(Class<? extends ReportGenerator> clazz) throws DocumentException, FileNotFoundException {
-            iterGuideRepository.findByIterGuideNumberResult();
-            reportService.generate(clazz, new HashMap<>(), "guide-number");
-        }
 
         final IterGuideRepository iterGuideRepository;
         final IterGuideApiSunat iterGuideApiSunat;
@@ -70,7 +65,7 @@ public class CorrectOCP {
             this.iterGuideApiSunat = iterGuideApiSunat;
             this.reportService = reportService;
         }
-
+        
         @Override
         public List<?> getFirstPartIterGuide() {
             List<?> list = iterGuideRepository.findByIdResult();
@@ -90,6 +85,12 @@ public class CorrectOCP {
             iterGuideRepository.saveIterGuideResultStepB();
             reportService.generate(PdfIterGuideReport.class, new HashMap<>(), "guide-number");
         }
+        
+        @Override
+        public void generateReportPdf(Class<? extends ReportGenerator> clazz) throws DocumentException, FileNotFoundException {
+            iterGuideRepository.findByIterGuideNumberResult();
+            reportService.generate(clazz, new HashMap<>(), "guide-number");
+        }
 
     }
 
@@ -102,7 +103,6 @@ public class CorrectOCP {
     }
 
     class IterGuideRepositoryImpl implements IterGuideRepository {
-
 
         @Override
         public int saveIterGuideResultStepA() {
@@ -180,7 +180,6 @@ public class CorrectOCP {
         }
 
         protected abstract void buildPdf(Document document, Map<String, ?> data) throws DocumentException;
-
     }
 
     abstract class JasperReportGenerator implements ReportGenerator{
