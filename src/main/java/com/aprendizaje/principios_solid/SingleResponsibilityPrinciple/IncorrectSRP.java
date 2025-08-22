@@ -56,7 +56,7 @@ public class IncorrectSRP {
             iterGuideRepository.saveIterGuideResultStepA();
             iterGuideApiSunat.sendIterGuideEmailResult();
             iterGuideRepository.saveIterGuideResultStepB();
-            IterGuideReportPdfGenerator.generateIterGuideReportPdf();
+            IterGuideReportPdfGenerator.generateIterGuideReportPdf(); //violación del SRP
         }
 
     }
@@ -124,7 +124,9 @@ public class IncorrectSRP {
     4. Generar un reporte de la guía en PDF
 
     el cual, desde el paso 1 hasta el 3 cumple con la responsabilidad de 'registro de la guía' que sería el proceso de
-    negocio, pero el paso 4, que es la de generar un reporte, no sería necesaria para cumplir esta responsabilidad
+    negocio, pero el paso 4, que es la de generar un reporte, no sería necesaria para cumplir esta responsabilidad,
+    además que la generación de reportes debería ir en una capa de servicio aparte, porque se implementan varias
+    validaciones como para almacenar la lógica de la generación de pdf en una clase de utilidad, como en este caso
  */
 
 
