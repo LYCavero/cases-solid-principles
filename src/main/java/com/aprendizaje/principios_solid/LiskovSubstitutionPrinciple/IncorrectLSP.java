@@ -1,4 +1,4 @@
-package com.aprendizaje.principios_solid.OpenClosedPrinciple;
+package com.aprendizaje.principios_solid.LiskovSubstitutionPrinciple;
 
 import com.itextpdf.text.Document;
 import com.itextpdf.text.DocumentException;
@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class CorrectOCP {
+public class IncorrectLSP {
 
     class IterGuideController{
 
@@ -42,6 +42,10 @@ public class CorrectOCP {
         public void generateReportCopyIterGuide() throws DocumentException, FileNotFoundException {
             iterGuideService.generateReportCopyIterGuide(ReportType.PDF_DISPATCH_GUIDE);
         }
+
+        public void generateExcelReportIterGuide() throws DocumentException, FileNotFoundException {
+            iterGuideService.generateExcelReportIterGuide(ReportType.EXCEL_ITER_GUIDE_REPORT);
+        }
     }
 
     interface IterGuideService{
@@ -50,6 +54,7 @@ public class CorrectOCP {
         List<?> findByIterGuideNumber();
         void registerIterGuide(ReportType reportType) throws DocumentException, FileNotFoundException;
         void generateReportCopyIterGuide(ReportType reportType) throws DocumentException, FileNotFoundException;
+        void generateExcelReportIterGuide(ReportType reportType) throws DocumentException, FileNotFoundException;
     }
 
     class IterGuideServiceImpl implements IterGuideService {
@@ -90,6 +95,12 @@ public class CorrectOCP {
             iterGuideRepository.findByIterGuideNumberResult();
             Map<String,Integer> map = new HashMap<>();
             reportService.generate(reportType, map,"dispatch-guide-number-report");
+        }
+
+        @Override
+        public void generateExcelReportIterGuide(ReportType reportType) throws DocumentException, FileNotFoundException {
+            iterGuideRepository.findByIterGuideNumberResult();
+            reportService.generate(reportType,List.of(),"iter-guide-number-excel-report");
         }
     }
 
@@ -158,7 +169,7 @@ public class CorrectOCP {
             if (generator == null) {
                 throw new IllegalArgumentException("Tipo de reporte no soportado: " + reportType);
             }
-            generator.generateReport(data, name);
+            generator.generateReport(data,name);
         }
     }
 
@@ -171,7 +182,8 @@ public class CorrectOCP {
 
     enum ReportType{
         PDF_ITER_GUIDE,
-        PDF_DISPATCH_GUIDE
+        PDF_DISPATCH_GUIDE,
+        EXCEL_ITER_GUIDE_REPORT
     }
 
     class PdfIterGuideReport extends ReportGenerator<Map<String, String>> {
@@ -208,26 +220,17 @@ public class CorrectOCP {
         }
     }
 
+    class ExcelIterGuideReport extends ReportGenerator<List<Integer>> {
+
+        @Override
+        ReportType getType() {
+            return ReportType.EXCEL_ITER_GUIDE_REPORT;
+        }
+
+        @Override
+        public void generateReport(List<Integer> data, String name) {
+            throw new UnsupportedOperationException("This type of report cannot be generated.");
+        }
+    }
+
 }
-
-/*
-    En este ejemplo se cambió la lógica de verificar los tipos de reportes que el método tenía permitido generar
-    mediante if/else a polimorfismo. Si bien se separó la responsabilidad de la generación de un reporte en un servicio
-    aparte(ReportServiceImpl), colocar la lógica en un mismo método para cada tipo de reporte haría que se vaya
-    modificando e incrementando en caso de que en un futuro el negocio necesite generar nuevos tipos de reportes, así
-    que en este caso lo que se realizó fue que solo exista un solo método en la clase ReportServiceImpl, el cual se
-    va a encargar de verificar que la clase que se reciba como parámetro sea una clase que implementa la interfaz
-    ReportGenerator.
-
-    Entonces esta implementación de la generación de reportes cumple con el principio OCP, abierta a extensión y cerrada
-    a modificación, ya que por cada nuevo tipo de reporte se necesite imprimir simplemente se necesita crear una nueva
-    clase que IMPLEMENTE la interfaz ReportGenerator, o en caso se implemente a una clase, EXTIENDA a las clases hijas,
-    y esta creación de una nueva clase no necesita MODIFICAR la clase ReportServiceImpl, cumpliendo con el principio
-    cerrado a modificación.
-
-    Otro punto a aclarar es que en este caso ya no se inyecta la interfaz ReportService en el controlador como en los
-    ejemplos anteriores, debido a que en este ejemplo se asume que la generación de un reporte no es opcional, sino
-    obligatorio, lo que iría dentro de la lógica de negocio, permitiendo que se necesite inyectar la interfaz
-    ReportService dentro de la clase IterGuideServiceImpl, que a su vez cumple con el principio de SRP, ya que se
-    delega la generación del reporte a un método de la implementación de la interfaz ReportService.
- */

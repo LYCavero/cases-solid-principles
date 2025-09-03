@@ -1,4 +1,4 @@
-package com.aprendizaje.principios_solid.OpenClosedPrinciple;
+package com.aprendizaje.principios_solid.InterfaceSegregationPrinciple;
 
 import com.itextpdf.text.Document;
 import com.itextpdf.text.DocumentException;
@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class CorrectOCP {
+public class CorrectISP {
 
     class IterGuideController{
 
@@ -42,6 +42,10 @@ public class CorrectOCP {
         public void generateReportCopyIterGuide() throws DocumentException, FileNotFoundException {
             iterGuideService.generateReportCopyIterGuide(ReportType.PDF_DISPATCH_GUIDE);
         }
+
+        public void generateExcelReportIterGuide() throws DocumentException, FileNotFoundException {
+            iterGuideService.generateExcelReportIterGuide(ReportType.EXCEL_ITER_GUIDE_REPORT);
+        }
     }
 
     interface IterGuideService{
@@ -50,6 +54,7 @@ public class CorrectOCP {
         List<?> findByIterGuideNumber();
         void registerIterGuide(ReportType reportType) throws DocumentException, FileNotFoundException;
         void generateReportCopyIterGuide(ReportType reportType) throws DocumentException, FileNotFoundException;
+        void generateExcelReportIterGuide(ReportType reportType) throws DocumentException, FileNotFoundException;
     }
 
     class IterGuideServiceImpl implements IterGuideService {
@@ -81,15 +86,21 @@ public class CorrectOCP {
             iterGuideRepository.saveIterGuideResultStepA();
             iterGuideApiSunat.sendIterGuideEmailResult();
             iterGuideRepository.saveIterGuideResultStepB();
-            Map<String,String> map = new HashMap<>();
+            HashMap<String,String> map = new HashMap<>();
             reportService.generate(reportType,map,"iter-guide-number-report");
         }
 
         @Override
         public void generateReportCopyIterGuide(ReportType reportType) throws DocumentException, FileNotFoundException {
             iterGuideRepository.findByIterGuideNumberResult();
-            Map<String,Integer> map = new HashMap<>();
+            HashMap<String,Integer> map = new HashMap<>();
             reportService.generate(reportType, map,"dispatch-guide-number-report");
+        }
+
+        @Override
+        public void generateExcelReportIterGuide(ReportType reportType) throws DocumentException, FileNotFoundException {
+            iterGuideRepository.findByIterGuideNumberResult();
+            reportService.generate(reportType,List.of(),"iter-guide-number-excel-report");
         }
     }
 
@@ -158,76 +169,103 @@ public class CorrectOCP {
             if (generator == null) {
                 throw new IllegalArgumentException("Tipo de reporte no soportado: " + reportType);
             }
-            generator.generateReport(data, name);
+            generator.generateReport(data,name);
         }
     }
 
-    abstract class ReportGenerator<T>{
+    interface ReportGenerator<T>{
 
-        abstract ReportType getType();
+        void generateReport(T data, String name) throws FileNotFoundException, DocumentException;
+        ReportType getType();
+    }
 
-        abstract void generateReport(T data, String name) throws FileNotFoundException, DocumentException;
+    interface EditableReportGenerator<T> extends ReportGenerator<T>{
+
+        void editReport(T data, String filePath);
+    }
+
+    abstract class PdfReportGenerator<T> implements ReportGenerator<T>{
+
+        @Override
+        public void generateReport(T data, String name) throws FileNotFoundException, DocumentException {
+            Document document = new Document();
+            PdfWriter writer = PdfWriter.getInstance(document, new FileOutputStream(name));
+            document.open();
+            buildPdf(document, data);
+            document.close();
+        }
+
+        protected abstract void buildPdf(Document document, T data) throws DocumentException, FileNotFoundException;
+    }
+
+    abstract class ExcelReportGenerator<T> implements EditableReportGenerator<T>{
+
+        @Override
+        public void generateReport(T data, String name) {
+            System.out.println("Generating an Excel file for editing...");
+            documentExcel(data);
+        }
+
+        @Override
+        public void editReport(T data, String filePath) {
+            System.out.println("Find file in the specified path...");
+            editExcel(data);
+        }
+
+        protected abstract void documentExcel(T data);
+
+        protected abstract void editExcel(T data);
     }
 
     enum ReportType{
         PDF_ITER_GUIDE,
-        PDF_DISPATCH_GUIDE
+        PDF_DISPATCH_GUIDE,
+        EXCEL_ITER_GUIDE_REPORT
     }
 
-    class PdfIterGuideReport extends ReportGenerator<Map<String, String>> {
+    class PdfIterGuideReport extends PdfReportGenerator<Map<String, String>> {
 
         @Override
-        ReportType getType() {
+        public void buildPdf(Document document, Map<String,String> data) throws FileNotFoundException, DocumentException {
+            document.add(new Paragraph("PDF Iter guide"));
+        }
+
+        @Override
+        public ReportType getType() {
             return ReportType.PDF_ITER_GUIDE;
         }
+    }
+
+    class PdfDispatchGuideReport extends PdfReportGenerator<Map<String, Integer>> {
 
         @Override
-        public void generateReport(Map<String, String> data, String name) throws FileNotFoundException, DocumentException {
-            Document document = new Document();
-            PdfWriter writer = PdfWriter.getInstance(document, new FileOutputStream(name));
-            document.open();
-            document.add(new Paragraph("PDF Iter guide"));
-            document.close();
+        public void buildPdf(Document document, Map<String, Integer> data) throws FileNotFoundException, DocumentException {
+            document.add(new Paragraph("PDF dispatch"));
+        }
+
+        @Override
+        public ReportType getType() {
+            return ReportType.PDF_DISPATCH_GUIDE;
         }
     }
 
-    class PdfDispatchGuideReport extends ReportGenerator<Map<String, Integer>>{
+    class ExcelIterGuideReport extends ExcelReportGenerator<List<Integer>> {
 
         @Override
-        ReportType getType() {
-            return ReportType.PDF_DISPATCH_GUIDE;
+        public void documentExcel(List<Integer> data) {
+            System.out.println("Document detail logic...");
         }
 
         @Override
-        public void generateReport(Map<String, Integer> data, String name) throws FileNotFoundException, DocumentException {
-            Document document = new Document();
-            PdfWriter writer = PdfWriter.getInstance(document, new FileOutputStream(name));
-            document.open();
-            document.add(new Paragraph("PDF dispatch"));
-            document.close();
+        protected void editExcel(List<Integer> data) {
+            System.out.println("Logic for edit the document...");
+        }
+
+        @Override
+        public ReportType getType() {
+            return ReportType.EXCEL_ITER_GUIDE_REPORT;
         }
     }
 
 }
 
-/*
-    En este ejemplo se cambió la lógica de verificar los tipos de reportes que el método tenía permitido generar
-    mediante if/else a polimorfismo. Si bien se separó la responsabilidad de la generación de un reporte en un servicio
-    aparte(ReportServiceImpl), colocar la lógica en un mismo método para cada tipo de reporte haría que se vaya
-    modificando e incrementando en caso de que en un futuro el negocio necesite generar nuevos tipos de reportes, así
-    que en este caso lo que se realizó fue que solo exista un solo método en la clase ReportServiceImpl, el cual se
-    va a encargar de verificar que la clase que se reciba como parámetro sea una clase que implementa la interfaz
-    ReportGenerator.
-
-    Entonces esta implementación de la generación de reportes cumple con el principio OCP, abierta a extensión y cerrada
-    a modificación, ya que por cada nuevo tipo de reporte se necesite imprimir simplemente se necesita crear una nueva
-    clase que IMPLEMENTE la interfaz ReportGenerator, o en caso se implemente a una clase, EXTIENDA a las clases hijas,
-    y esta creación de una nueva clase no necesita MODIFICAR la clase ReportServiceImpl, cumpliendo con el principio
-    cerrado a modificación.
-
-    Otro punto a aclarar es que en este caso ya no se inyecta la interfaz ReportService en el controlador como en los
-    ejemplos anteriores, debido a que en este ejemplo se asume que la generación de un reporte no es opcional, sino
-    obligatorio, lo que iría dentro de la lógica de negocio, permitiendo que se necesite inyectar la interfaz
-    ReportService dentro de la clase IterGuideServiceImpl, que a su vez cumple con el principio de SRP, ya que se
-    delega la generación del reporte a un método de la implementación de la interfaz ReportService.
- */
